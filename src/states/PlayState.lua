@@ -28,7 +28,7 @@ function PlayState:init()
 end
 
 function PlayState:getRandomInterval()
-    return math.ceil(math.random(3))
+    return math.random(1, 4)
 end
 function PlayState:update(dt)
     -- update timer for pipe spawning
@@ -50,7 +50,7 @@ function PlayState:update(dt)
                 )
         )
         self.lastY = newY
-        local newX = VIRTUAL_WIDTH + 10;
+        local newX = VIRTUAL_WIDTH + Pipe:WIDTH();
 
         -- if we are past the first pipe
         if (#self.pipePairs > 0) then

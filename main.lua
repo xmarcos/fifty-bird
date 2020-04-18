@@ -65,7 +65,6 @@ local GROUND_SCROLL_SPEED = 60
 local BACKGROUND_LOOPING_POINT = 413
 
 function love.load()
-    love.audio.setVolume(0)
     -- initialize our nearest-neighbor filter
     love.graphics.setDefaultFilter('nearest', 'nearest')
 
@@ -94,6 +93,7 @@ function love.load()
     }
 
     -- kick off music
+    love.audio.setVolume(0.2)
     sounds['music']:setLooping(true)
     sounds['music']:play()
 
