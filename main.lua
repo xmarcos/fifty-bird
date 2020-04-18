@@ -30,7 +30,7 @@ Class = require 'lib/class'
 
 -- a basic StateMachine class which will allow us to transition to and from
 -- game states smoothly and avoid monolithic code in one file
-require '/src/StateMachine'
+require '/lib/StateMachine'
 
 -- all states our StateMachine can transition between
 require '/src/states/BaseState'
@@ -56,6 +56,8 @@ local backgroundScroll = 0
 
 local ground = love.graphics.newImage('images/ground.png')
 local groundScroll = 0
+
+GROUND_HEIGHT = ground:getHeight()
 
 local BACKGROUND_SCROLL_SPEED = 30
 local GROUND_SCROLL_SPEED = 60

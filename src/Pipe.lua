@@ -13,6 +13,9 @@ Pipe = Class{}
 
 -- since we only want the image loaded once, not per instantation, define it externally
 local PIPE_IMAGE = love.graphics.newImage('images/pipe.png')
+PIPE_IMAGE:setFilter('nearest','nearest')
+-- minimum height to allow showing the pipe opening (32) and 2 pixels of the pipe
+local PIPE_MIN_HEIGHT = 34
 
 function Pipe:init(orientation, y)
     self.x = VIRTUAL_WIDTH + 64
@@ -22,6 +25,10 @@ function Pipe:init(orientation, y)
     self.height = PIPE_HEIGHT
 
     self.orientation = orientation
+end
+
+function Pipe:getMinHeight()
+    return PIPE_MIN_HEIGHT
 end
 
 function Pipe:update(dt)

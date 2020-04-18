@@ -14,6 +14,10 @@ PIPE_SPEED = 60
 PIPE_WIDTH = 70
 PIPE_HEIGHT = 288
 
+-- Sets the maximum distance between the beginning of the pipe gap of two different pipe pairs,
+-- so that they aren't too far apart. Increase the number to make it harder to play.
+PIPE_MAX_GAP_DISTANCE = 20
+
 BIRD_WIDTH = 38
 BIRD_HEIGHT = 24
 
@@ -23,25 +27,35 @@ function PlayState:init()
     self.timer = 0
     self.score = 0
 
-    -- initialize our last recorded Y value for a gap placement to base other gaps off of
-    self.lastY = -PIPE_HEIGHT + math.random(80) + 20
+    -- initialize our last recorded Y value to a valid but random value
+    self.lastY = -PIPE_HEIGHT + math.random(Pipe:getMinHeight(), Pipe:getMinHeight()*3)
+
 end
 
 function PlayState:update(dt)
     -- update timer for pipe spawning
     self.timer = self.timer + dt
 
-    -- spawn a new pipe pair every second and a half
     if self.timer > 2 then
-        -- modify the last Y coordinate we placed so pipe gaps aren't too far apart
-        -- no higher than 10 pixels below the top edge of the screen,
-        -- and no lower than a gap length (90 pixels) from the bottom
-        local y = math.max(-PIPE_HEIGHT + 10, 
-            math.min(self.lastY + math.random(-20, 20), VIRTUAL_HEIGHT - 90 - PIPE_HEIGHT))
-        self.lastY = y
+        -- get the random gap height of the new Pipe Pair to calculate its vertical position
+        local newGapHeight = PipePair:getRandomGapHeight()
+        -- calculate the vertical position of the PipePair
+        local newY = math.min(
+                -- don't go over the combined (negative) height of the gap, the ground and the
+                -- height of the lower pipe's opening to ensure that both pipes are visible
+                (newGapHeight + GROUND_HEIGHT + Pipe:getMinHeight()) * -1,
+                -- position the next pipe so that the begining of its gap is close (PIPE_MAX_GAP_DISTANCE)
+                -- to the previous one and ensure we don't go over the top of the screen.
+                math.max(
+                    self.lastY + math.random(-PIPE_MAX_GAP_DISTANCE, PIPE_MAX_GAP_DISTANCE),
+                    -PIPE_HEIGHT + Pipe:getMinHeight()
+                )
+        )
+        self.lastY = newY
+        local newPipePair = PipePair(newY, newGapHeight)
 
         -- add a new pipe pair at the end of the screen at our new Y
-        table.insert(self.pipePairs, PipePair(y))
+        table.insert(self.pipePairs, newPipePair)
 
         -- reset timer
         self.timer = 0
@@ -80,9 +94,9 @@ function PlayState:update(dt)
                 sounds['explosion']:play()
                 sounds['hurt']:play()
 
-                gStateMachine:change('score', {
-                    score = self.score
-                })
+                -- gStateMachine:change('score', {
+                --     score = self.score
+                -- })
             end
         end
     end
@@ -95,9 +109,9 @@ function PlayState:update(dt)
         sounds['explosion']:play()
         sounds['hurt']:play()
 
-        gStateMachine:change('score', {
-            score = self.score
-        })
+        -- gStateMachine:change('score', {
+        --     score = self.score
+        -- })
     end
 end
 
