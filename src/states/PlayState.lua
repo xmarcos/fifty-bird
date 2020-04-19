@@ -70,8 +70,12 @@ function PlayState:update(dt)
             -- get the previous pipe position
             local previousPairX = self.pipePairs[#self.pipePairs]:getCurrentX()
             -- position the next pipe relative to the end of the previous one to avoid overlaping
-            -- and space it using a random space that can be at most randomInterval times a half-pipe
-            newX = previousPairX + Pipe:WIDTH() + math.random(Pipe:WIDTH() * self.timer)
+            -- and space it using a random space that can be at most randomInterval times a half-pipe.
+            -- Ensure the pipe is not drawed on-screen
+            newX = math.max(
+                VIRTUAL_WIDTH,
+                previousPairX + Pipe:WIDTH() + math.random(Pipe:WIDTH() * self.timer)
+            )
         end
 
         -- create the the new pair
