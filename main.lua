@@ -43,6 +43,7 @@ require '/src/states/TitleScreenState'
 require '/src/Bird'
 require '/src/Pipe'
 require '/src/PipePair'
+require '/src/Icons'
 
 -- physical screen dimensions
 WINDOW_WIDTH = 1280

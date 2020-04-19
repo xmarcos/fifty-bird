@@ -44,7 +44,6 @@ function PlayState:update(dt)
             ['lastY']          = self.lastY
         })
     end
-
     -- count it once per dt
     self.pipePairsCount = #self.pipePairs
     -- update timer for pipe spawning

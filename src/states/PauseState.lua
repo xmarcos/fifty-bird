@@ -41,9 +41,25 @@ function PauseState:render()
     love.graphics.setColor(1, 1, 1, 1)
 
     -- Pause Menu
-    love.graphics.setFont(flappyFont)
-    love.graphics.printf('PAUSE', 0, 64, VIRTUAL_WIDTH, 'center')
+    local pauseIconScale = 5
+    local pauseIconSize = 16 * pauseIconScale
+    local pauseIconY = (VIRTUAL_HEIGHT-GROUND_HEIGHT-pauseIconSize)/2
+    love.graphics.draw(
+        getIconTexture(),
+        getIconQuads('pause'),
+        (VIRTUAL_WIDTH-pauseIconSize)/2,
+        pauseIconY,
+        0,
+        pauseIconScale,
+        pauseIconScale
+    )
+    love.graphics.setFont(smallFont)
+    love.graphics.printf(
+        'Press P or SPACE to resume',
+        0,
+        pauseIconY + pauseIconSize + smallFont:getHeight(),
+        VIRTUAL_WIDTH,
+        'center'
+    )
 
-    love.graphics.setFont(mediumFont)
-    love.graphics.printf('Press P or SPACE to resume', 0, 100, VIRTUAL_WIDTH, 'center')
 end
