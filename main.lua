@@ -55,9 +55,11 @@ VIRTUAL_HEIGHT = 288
 GAME_PAUSED = false
 
 local background = love.graphics.newImage('images/background.png')
+background:setFilter('nearest','nearest')
 local backgroundScroll = 0
 
 local ground = love.graphics.newImage('images/ground.png')
+ground:setFilter('nearest','nearest')
 local groundScroll = 0
 
 GROUND_HEIGHT = ground:getHeight()
