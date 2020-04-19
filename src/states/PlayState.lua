@@ -17,11 +17,11 @@ local PIPE_MAX_GAP_DISTANCE = 20
 function PlayState:init()
     self.bird = Bird()
     self.pipePairs = {}
+    self.pipePairsCount = 0
     self.timer = 0
     self.score = 0
-    -- start with two, don't make the user wait too long
-    self.randomInterval = 2
-
+    -- start with one, don't make the user wait too long
+    self.randomInterval = 1
     -- initialize our last recorded Y value to a valid but random value
     self.lastY = -Pipe:HEIGHT() + math.random(Pipe:MIN_HEIGHT(), Pipe:MIN_HEIGHT()*3)
 end
@@ -35,53 +35,31 @@ function PlayState:update(dt)
     if love.keyboard.wasPressed('p') then
         -- pass current playState to the pauseState
         gStateMachine:change('pause', {
-            ['bird'] = self.bird,
-            ['pipePairs'] = self.pipePairs,
-            ['timer'] = self.timer,
-            ['score'] = self.score,
+            ['bird']           = self.bird,
+            ['pipePairs']      = self.pipePairs,
+            ['pipePairsCount'] = self.pipePairsCount,
+            ['timer']          = self.timer,
+            ['score']          = self.score,
             ['randomInterval'] = self.randomInterval,
-            ['lastY'] = self.lastY
+            ['lastY']          = self.lastY
         })
     end
 
+    -- count it once per dt
+    self.pipePairsCount = #self.pipePairs
     -- update timer for pipe spawning
     self.timer = self.timer + dt
 
     if self.timer > self.randomInterval then
-        -- get the random gap height of the new Pipe Pair to calculate its vertical position
-        local newGapHeight = PipePair:getRandomGapHeight()
-        -- calculate the vertical position of the PipePair
-        local newY = math.min(
-                -- don't go over the combined (negative) height of the gap, the ground and the
-                -- height of the lower pipe's opening to ensure that both pipes are visible
-                (newGapHeight + GROUND_HEIGHT + Pipe:MIN_HEIGHT()) * -1,
-                -- position the next pipe so that the begining of its gap is close (PIPE_MAX_GAP_DISTANCE)
-                -- to the previous one and ensure we don't go over the top of the screen.
-                math.max(
-                    self.lastY + math.random(-PIPE_MAX_GAP_DISTANCE, PIPE_MAX_GAP_DISTANCE),
-                    -Pipe:HEIGHT() + Pipe:MIN_HEIGHT()
-                )
-        )
-        self.lastY = newY
-        local newX = VIRTUAL_WIDTH + Pipe:WIDTH();
-
+        -- default to the edge of the screen
+        local previousPairX = VIRTUAL_WIDTH
         -- if we are past the first pipe
-        if (#self.pipePairs > 0) then
+        if (self.pipePairsCount > 0) then
             -- get the previous pipe position
-            local previousPairX = self.pipePairs[#self.pipePairs]:getCurrentX()
-            -- position the next pipe relative to the end of the previous one to avoid overlaping
-            -- and space it using a random space that can be at most randomInterval times a half-pipe.
-            -- Ensure the pipe is not drawed on-screen
-            newX = math.max(
-                VIRTUAL_WIDTH,
-                previousPairX + Pipe:WIDTH() + math.random(Pipe:WIDTH() * self.timer)
-            )
+            previousPairX = self.pipePairs[self.pipePairsCount]:getCurrentX()
         end
-
-        -- create the the new pair
-        local newPipePair = PipePair(newX, newY, newGapHeight)
-        table.insert(self.pipePairs, newPipePair)
-
+        -- generate the new pair relative to the previous one or the edge of the screen
+        self:generateNextPair(previousPairX)
         -- reset timer
         self.timer = 0
         -- reset interval
@@ -99,7 +77,6 @@ function PlayState:update(dt)
                 sounds['score']:play()
             end
         end
-
         -- update position of pair
         pair:update(dt)
     end
@@ -142,6 +119,42 @@ function PlayState:update(dt)
     end
 end
 
+
+function PlayState:generateNextPair(previousPairX)
+    -- get the random gap height of the new Pipe Pair to calculate its vertical position
+    local newGapHeight = PipePair:getRandomGapHeight()
+    -- calculate the vertical position of the PipePair
+    local newY = math.min(
+            -- don't go over the combined (negative) height of the gap, the ground and the
+            -- height of the lower pipe's opening to ensure that both pipes are visible
+            (newGapHeight + GROUND_HEIGHT + Pipe:MIN_HEIGHT()) * -1,
+            -- position the next pipe so that the begining of its gap is close (PIPE_MAX_GAP_DISTANCE)
+            -- to the previous one and ensure we don't go over the top of the screen.
+            math.max(
+                self.lastY + math.random(-PIPE_MAX_GAP_DISTANCE, PIPE_MAX_GAP_DISTANCE),
+                -Pipe:HEIGHT() + Pipe:MIN_HEIGHT()
+            )
+    )
+    self.lastY = newY
+    -- position the next pipe relative to the end of the previousPairX to avoid overlaping
+    local newX =
+        math.max(
+            -- ensure pipes are always drawn off-screen to avoid visual glitches
+            VIRTUAL_WIDTH + Pipe:WIDTH()/4,
+            -- using self.timer, ensure there is at least 1/4 of a pipe of distance if the value is close to zero
+            previousPairX + Pipe:WIDTH() + Pipe:WIDTH()/4,
+            -- position relative to the previous pair using a self.timer-adjusted position
+            -- but don't go over 3 pipes of distance
+            previousPairX + Pipe:WIDTH() + math.min(
+                math.random(Pipe:WIDTH() * self.timer),
+                Pipe:WIDTH() * 3
+            )
+        )
+    -- create the the new pair and append the new pair
+    local newPipePair = PipePair(newX, newY, newGapHeight)
+    table.insert(self.pipePairs, newPipePair)
+end
+
 function PlayState:render()
     for k, pair in pairs(self.pipePairs) do
         pair:render()
@@ -156,11 +169,12 @@ end
 function PlayState:enter(previousPlayState)
     if previousPlayState ~= nil then
         -- restore previousPlayState
-        self.bird = previousPlayState.bird
-        self.pipePairs = previousPlayState.pipePairs
-        self.timer = previousPlayState.timer
-        self.score = previousPlayState.score
+        self.bird           = previousPlayState.bird
+        self.pipePairs      = previousPlayState.pipePairs
+        self.pipePairsCount = previousPlayState.pipePairsCount
+        self.timer          = previousPlayState.timer
+        self.score          = previousPlayState.score
         self.randomInterval = previousPlayState.randomInterval
-        self.lastY = previousPlayState.lastY
+        self.lastY          = previousPlayState.lastY
     end
 end
