@@ -24,13 +24,26 @@ function PlayState:init()
 
     -- initialize our last recorded Y value to a valid but random value
     self.lastY = -Pipe:HEIGHT() + math.random(Pipe:MIN_HEIGHT(), Pipe:MIN_HEIGHT()*3)
-
 end
 
 function PlayState:getRandomInterval()
     return math.random(1, 4)
 end
+
 function PlayState:update(dt)
+
+    if love.keyboard.wasPressed('p') then
+        -- pass current playState to the pauseState
+        gStateMachine:change('pause', {
+            ['bird'] = self.bird,
+            ['pipePairs'] = self.pipePairs,
+            ['timer'] = self.timer,
+            ['score'] = self.score,
+            ['randomInterval'] = self.randomInterval,
+            ['lastY'] = self.lastY
+        })
+    end
+
     -- update timer for pipe spawning
     self.timer = self.timer + dt
 
@@ -136,18 +149,14 @@ function PlayState:render()
     self.bird:render()
 end
 
---[[
-    Called when this state is transitioned to from another state.
-]]
-function PlayState:enter()
-    -- if we're coming from death, restart scrolling
-    scrolling = true
-end
-
---[[
-    Called when this state changes to another state.
-]]
-function PlayState:exit()
-    -- stop scrolling for the death/score screen
-    scrolling = false
+function PlayState:enter(previousPlayState)
+    if previousPlayState ~= nil then
+        -- restore previousPlayState
+        self.bird = previousPlayState.bird
+        self.pipePairs = previousPlayState.pipePairs
+        self.timer = previousPlayState.timer
+        self.score = previousPlayState.score
+        self.randomInterval = previousPlayState.randomInterval
+        self.lastY = previousPlayState.lastY
+    end
 end
