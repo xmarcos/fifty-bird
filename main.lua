@@ -55,6 +55,8 @@ VIRTUAL_HEIGHT = 288
 
 GAME_PAUSED = false
 
+DEBUG_MODE = false
+
 local background = love.graphics.newImage('images/background.png')
 background:setFilter('nearest','nearest')
 local backgroundScroll = 0
@@ -70,7 +72,7 @@ local GROUND_SCROLL_SPEED = 60
 
 local BACKGROUND_LOOPING_POINT = 413
 
-function love.load()
+function love.load(cli_args)
     -- initialize our nearest-neighbor filter
     love.graphics.setDefaultFilter('nearest', 'nearest')
 
@@ -93,13 +95,14 @@ function love.load()
         ['explosion'] = love.audio.newSource('sounds/explosion.wav', 'static'),
         ['hurt'] = love.audio.newSource('sounds/hurt.wav', 'static'),
         ['score'] = love.audio.newSource('sounds/score.wav', 'static'),
-
+        ['pause'] = love.audio.newSource('sounds/pause.wav', 'static'),
+        -- https://freesound.org/s/118238/
+        ['score-random'] = love.audio.newSource('sounds/score-random.mp3', 'static'),
         -- https://freesound.org/people/xsgianni/sounds/388079/
         ['music'] = love.audio.newSource('sounds/marios_way.mp3', 'static')
     }
 
     -- kick off music
-    love.audio.setVolume(0.2)
     sounds['music']:setLooping(true)
     sounds['music']:play()
 
@@ -118,7 +121,22 @@ function love.load()
         ['pause'] = function() return PauseState() end,
         ['score'] = function() return ScoreState() end
     }
-    gStateMachine:change('title')
+
+    DEBUG_MODE = #cli_args > 0
+
+    if (DEBUG_MODE) then
+        love.audio.setVolume(0.1)
+        if (cli_args[1] == 'score') then
+            gStateMachine:change('score', {
+                ['score'] = tonumber(cli_args[2])
+            })
+        else
+            -- skip countdown
+            gStateMachine:change('play')
+        end
+    else
+        gStateMachine:change('title')
+    end
 
     -- initialize input table
     love.keyboard.keysPressed = {}
@@ -184,8 +202,9 @@ function love.draw()
     gStateMachine:render()
     love.graphics.draw(ground, -groundScroll, VIRTUAL_HEIGHT - 16)
 
-    -- display FPS for debugging;
-    displayFPS()
+    if (DEBUG_MODE) then
+        displayFPS()
+    end
 
     push:finish()
 end

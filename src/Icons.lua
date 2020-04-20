@@ -8,6 +8,7 @@ local iconMap = {
     ['pause'] = 33,
     ['play'] = 34,
     ['zzz'] = 17,
+    ['meh'] = 11,
     ['ok'] = 10,
     ['dealwithit'] = 23
 }

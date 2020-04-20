@@ -19,7 +19,9 @@ function PipePair:init(x, y, gap_height)
     self.scored = false
 
     --the vertical space between the two pipes
-    self.gap_height = (gap_height <= GAP_MAX_HEIGHT and gap_height >= GAP_MIN_HEIGHT) and gap_height or GAP_MIN_HEIGHT
+    self.gap_height = (
+        gap_height <= GAP_MAX_HEIGHT and gap_height >= GAP_MIN_HEIGHT
+    ) and gap_height or GAP_MIN_HEIGHT
 
     self.x = x
 

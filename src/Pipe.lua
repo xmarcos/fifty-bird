@@ -43,16 +43,10 @@ function Pipe:SPEED()
     return PIPE_SPEED
 end
 
-function Pipe:update(dt)
-
-end
-
 function Pipe:render()
     love.graphics.draw(PIPE_IMAGE, self.x,
-
         -- shift pipe rendering down by its height if flipped vertically
         (self.orientation == 'top' and self.y + self:HEIGHT() or self.y),
-
         -- scaling by -1 on a given axis flips (mirrors) the image on that axis
         0, 1, self.orientation == 'top' and -1 or 1)
 end
