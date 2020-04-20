@@ -34,6 +34,19 @@ cd fifty-bird
 love .
 ```
 
+### Score State
+
+Show just the score state to demo the different _"awards"_.
+
+```bash
+cd fifty-bird
+TEST_SCORE=3
+love . score $TEST_SCORE
+
+# or just try them all
+for i in 0 1 4 7; do love . score $i; done
+```
+
 ## Notes
 
 The code has been upgraded to run on the latest version of LÖVE 2D —11.3 (Mysterious Mysteries).
