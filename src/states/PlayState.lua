@@ -10,41 +10,60 @@
 
 PlayState = Class{__includes = BaseState}
 
-PIPE_SPEED = 60
-PIPE_WIDTH = 70
-PIPE_HEIGHT = 288
-
-BIRD_WIDTH = 38
-BIRD_HEIGHT = 24
+-- Sets the maximum distance between the beginning of the pipe gap of two different pipe pairs,
+-- so that they aren't too far apart. Increase the number to make it harder to play.
+local PIPE_MAX_GAP_DISTANCE = 20
 
 function PlayState:init()
     self.bird = Bird()
     self.pipePairs = {}
+    self.pipePairsCount = 0
     self.timer = 0
     self.score = 0
+    -- start with one, don't make the user wait too long
+    self.randomInterval = 1
+    -- initialize our last recorded Y value to a valid but random value
+    self.lastY = -Pipe:HEIGHT() + math.random(Pipe:MIN_HEIGHT(), Pipe:MIN_HEIGHT()*3)
+end
 
-    -- initialize our last recorded Y value for a gap placement to base other gaps off of
-    self.lastY = -PIPE_HEIGHT + math.random(80) + 20
+function PlayState:getRandomInterval()
+    return math.random(1, 4)
 end
 
 function PlayState:update(dt)
+
+    if love.keyboard.wasPressed('p') then
+        -- pass current playState to the pauseState
+        gStateMachine:change('pause', {
+            ['bird']           = self.bird,
+            ['pipePairs']      = self.pipePairs,
+            ['pipePairsCount'] = self.pipePairsCount,
+            ['timer']          = self.timer,
+            ['score']          = self.score,
+            ['randomInterval'] = self.randomInterval,
+            ['lastY']          = self.lastY
+        })
+    end
+
+    -- count it once per dt
+    self.pipePairsCount = #self.pipePairs
     -- update timer for pipe spawning
     self.timer = self.timer + dt
 
-    -- spawn a new pipe pair every second and a half
-    if self.timer > 2 then
-        -- modify the last Y coordinate we placed so pipe gaps aren't too far apart
-        -- no higher than 10 pixels below the top edge of the screen,
-        -- and no lower than a gap length (90 pixels) from the bottom
-        local y = math.max(-PIPE_HEIGHT + 10, 
-            math.min(self.lastY + math.random(-20, 20), VIRTUAL_HEIGHT - 90 - PIPE_HEIGHT))
-        self.lastY = y
-
-        -- add a new pipe pair at the end of the screen at our new Y
-        table.insert(self.pipePairs, PipePair(y))
-
+    if self.timer > self.randomInterval then
+        -- default to the edge of the screen
+        local previousPairX = VIRTUAL_WIDTH
+        -- if we are past the first pipe
+        if (self.pipePairsCount > 0) then
+            -- get the previous pipe position
+            previousPairX = self.pipePairs[self.pipePairsCount]:getCurrentX()
+        end
+        -- generate the new pair relative to the previous one or the edge of the screen
+        self:generateNextPair(previousPairX)
         -- reset timer
         self.timer = 0
+        -- reset interval
+        self.randomInterval = self.getRandomInterval()
     end
 
     -- for every pair of pipes..
@@ -52,13 +71,12 @@ function PlayState:update(dt)
         -- score a point if the pipe has gone past the bird to the left all the way
         -- be sure to ignore it if it's already been scored
         if not pair.scored then
-            if pair.x + PIPE_WIDTH < self.bird.x then
+            if pair.x + Pipe:WIDTH() < self.bird.x then
                 self.score = self.score + 1
                 pair.scored = true
                 sounds['score']:play()
             end
         end
-
         -- update position of pair
         pair:update(dt)
     end
@@ -79,7 +97,6 @@ function PlayState:update(dt)
             if self.bird:collides(pipe) then
                 sounds['explosion']:play()
                 sounds['hurt']:play()
-
                 gStateMachine:change('score', {
                     score = self.score
                 })
@@ -94,11 +111,46 @@ function PlayState:update(dt)
     if self.bird.y > VIRTUAL_HEIGHT - 15 then
         sounds['explosion']:play()
         sounds['hurt']:play()
-
         gStateMachine:change('score', {
             score = self.score
         })
     end
+end
+
+
+function PlayState:generateNextPair(previousPairX)
+    -- get the random gap height of the new Pipe Pair to calculate its vertical position
+    local newGapHeight = PipePair:getRandomGapHeight()
+    -- calculate the vertical position of the PipePair
+    local newY = math.min(
+            -- don't go over the combined (negative) height of the gap, the ground and the
+            -- height of the lower pipe's opening to ensure that both pipes are visible
+            (newGapHeight + GROUND_HEIGHT + Pipe:MIN_HEIGHT()) * -1,
+            -- position the next pipe so that the begining of its gap is close (PIPE_MAX_GAP_DISTANCE)
+            -- to the previous one and ensure we don't go over the top of the screen.
+            math.max(
+                self.lastY + math.random(-PIPE_MAX_GAP_DISTANCE, PIPE_MAX_GAP_DISTANCE),
+                -Pipe:HEIGHT() + Pipe:MIN_HEIGHT()
+            )
+    )
+    self.lastY = newY
+    -- position the next pipe relative to the end of the previousPairX to avoid overlaping
+    local newX =
+        math.max(
+            -- ensure pipes are always drawn off-screen to avoid visual glitches
+            VIRTUAL_WIDTH + Pipe:WIDTH()/4,
+            -- using self.timer, ensure there is at least 1/4 of a pipe of distance if the value is close to zero
+            previousPairX + Pipe:WIDTH() + Pipe:WIDTH()/4,
+            -- position relative to the previous pair using a self.timer-adjusted position
+            -- but don't go over 3 pipes of distance
+            previousPairX + Pipe:WIDTH() + math.min(
+                math.random(Pipe:WIDTH() * self.timer),
+                Pipe:WIDTH() * 3
+            )
+        )
+    -- create the the new pair and append the new pair
+    local newPipePair = PipePair(newX, newY, newGapHeight)
+    table.insert(self.pipePairs, newPipePair)
 end
 
 function PlayState:render()
@@ -112,18 +164,15 @@ function PlayState:render()
     self.bird:render()
 end
 
---[[
-    Called when this state is transitioned to from another state.
-]]
-function PlayState:enter()
-    -- if we're coming from death, restart scrolling
-    scrolling = true
-end
-
---[[
-    Called when this state changes to another state.
-]]
-function PlayState:exit()
-    -- stop scrolling for the death/score screen
-    scrolling = false
+function PlayState:enter(previousPlayState)
+    if previousPlayState ~= nil then
+        -- restore previousPlayState
+        self.bird           = previousPlayState.bird
+        self.pipePairs      = previousPlayState.pipePairs
+        self.pipePairsCount = previousPlayState.pipePairsCount
+        self.timer          = previousPlayState.timer
+        self.score          = previousPlayState.score
+        self.randomInterval = previousPlayState.randomInterval
+        self.lastY          = previousPlayState.lastY
+    end
 end

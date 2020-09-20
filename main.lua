@@ -30,18 +30,20 @@ Class = require 'lib/class'
 
 -- a basic StateMachine class which will allow us to transition to and from
 -- game states smoothly and avoid monolithic code in one file
-require '/src/StateMachine'
+require '/lib/StateMachine'
 
 -- all states our StateMachine can transition between
 require '/src/states/BaseState'
 require '/src/states/CountdownState'
 require '/src/states/PlayState'
+require '/src/states/PauseState'
 require '/src/states/ScoreState'
 require '/src/states/TitleScreenState'
 
 require '/src/Bird'
 require '/src/Pipe'
 require '/src/PipePair'
+require '/src/Icons'
 
 -- physical screen dimensions
 WINDOW_WIDTH = 1280
@@ -51,18 +53,26 @@ WINDOW_HEIGHT = 720
 VIRTUAL_WIDTH = 512
 VIRTUAL_HEIGHT = 288
 
+GAME_PAUSED = false
+
+DEBUG_MODE = false
+
 local background = love.graphics.newImage('images/background.png')
+background:setFilter('nearest','nearest')
 local backgroundScroll = 0
 
 local ground = love.graphics.newImage('images/ground.png')
+ground:setFilter('nearest','nearest')
 local groundScroll = 0
+
+GROUND_HEIGHT = ground:getHeight()
 
 local BACKGROUND_SCROLL_SPEED = 30
 local GROUND_SCROLL_SPEED = 60
 
 local BACKGROUND_LOOPING_POINT = 413
 
-function love.load()
+function love.load(cli_args)
     -- initialize our nearest-neighbor filter
     love.graphics.setDefaultFilter('nearest', 'nearest')
 
@@ -85,7 +95,9 @@ function love.load()
         ['explosion'] = love.audio.newSource('sounds/explosion.wav', 'static'),
         ['hurt'] = love.audio.newSource('sounds/hurt.wav', 'static'),
         ['score'] = love.audio.newSource('sounds/score.wav', 'static'),
-
+        ['pause'] = love.audio.newSource('sounds/pause.wav', 'static'),
+        -- https://freesound.org/s/118238/
+        ['score-random'] = love.audio.newSource('sounds/score-random.mp3', 'static'),
         -- https://freesound.org/people/xsgianni/sounds/388079/
         ['music'] = love.audio.newSource('sounds/marios_way.mp3', 'static')
     }
@@ -106,9 +118,25 @@ function love.load()
         ['title'] = function() return TitleScreenState() end,
         ['countdown'] = function() return CountdownState() end,
         ['play'] = function() return PlayState() end,
+        ['pause'] = function() return PauseState() end,
         ['score'] = function() return ScoreState() end
     }
-    gStateMachine:change('title')
+
+    DEBUG_MODE = #cli_args > 0
+
+    if (DEBUG_MODE) then
+        love.audio.setVolume(0.1)
+        if (cli_args[1] == 'score') then
+            gStateMachine:change('score', {
+                ['score'] = tonumber(cli_args[2])
+            })
+        else
+            -- skip countdown
+            gStateMachine:change('play')
+        end
+    else
+        gStateMachine:change('title')
+    end
 
     -- initialize input table
     love.keyboard.keysPressed = {}
@@ -154,9 +182,12 @@ function love.mouse.wasPressed(button)
 end
 
 function love.update(dt)
-    -- scroll our background and ground, looping back to 0 after a certain amount
-    backgroundScroll = (backgroundScroll + BACKGROUND_SCROLL_SPEED * dt) % BACKGROUND_LOOPING_POINT
-    groundScroll = (groundScroll + GROUND_SCROLL_SPEED * dt) % VIRTUAL_WIDTH
+
+    if (not GAME_PAUSED) then
+        -- scroll our background and ground, looping back to 0 after a certain amount
+        backgroundScroll = (backgroundScroll + BACKGROUND_SCROLL_SPEED * dt) % BACKGROUND_LOOPING_POINT
+        groundScroll = (groundScroll + GROUND_SCROLL_SPEED * dt) % VIRTUAL_WIDTH
+    end
 
     gStateMachine:update(dt)
 
@@ -171,5 +202,16 @@ function love.draw()
     gStateMachine:render()
     love.graphics.draw(ground, -groundScroll, VIRTUAL_HEIGHT - 16)
 
+    if (DEBUG_MODE) then
+        displayFPS()
+    end
+
     push:finish()
+end
+
+function displayFPS()
+    love.graphics.setFont(smallFont)
+    love.graphics.setColor(0, 0, 0, 1)
+    love.graphics.print('FPS: ' .. tostring(love.timer.getFPS()), 10, VIRTUAL_HEIGHT - 30)
+    love.graphics.setColor(1, 1, 1, 1)
 end
